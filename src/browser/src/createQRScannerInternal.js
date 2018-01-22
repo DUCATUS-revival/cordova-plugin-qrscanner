@@ -2,7 +2,7 @@ require('webrtc-adapter');
 var workerScript = require("raw-loader!../worker.min.js");
 
 module.exports = function(){
-console.log("Calling: module.exports");
+
   var ELEMENTS = {
     preview: 'cordova-plugin-qrscanner-video-preview',
     still: 'cordova-plugin-qrscanner-still'
@@ -39,21 +39,19 @@ console.log("Calling: module.exports");
 
   //utils
   function killStream(mediaStream){
-console.log("Calling: killStream");
     mediaStream.getTracks().forEach(function(track){
       track.stop();
     });
   }
-
+  
   // For performance, we test best-to-worst constraints. Once we find a match,
   // we move to the next test. Since `ConstraintNotSatisfiedError`s are thrown
   // much faster than streams can be started and stopped, the scan is much
   // faster, even though it may iterate through more constraint objects.
   function getCameraSpecsById(deviceId){
-console.log("Calling: getCameraSpecsById");
+
     // return a getUserMedia Constraints
     function getConstraintObj(deviceId, facingMode, width, height){
-//console.log("Calling: getConstraintObj");
       var obj = { audio: false, video: {} };
       obj.video.deviceId = {exact: deviceId};
       if(facingMode) {
@@ -69,29 +67,22 @@ console.log("Calling: getCameraSpecsById");
     }
 
     var facingModeConstraints = facingModes.map(function(mode){
-console.log("Calling: facingModeConstraints");
-    	return getConstraintObj(deviceId, mode);
+      return getConstraintObj(deviceId, mode);
     });
     var widthConstraints = standardWidthsAndHeights.map(function(width){
-//console.log("Calling: widthConstraints");
-    	return getConstraintObj(deviceId, null, width);
+      return getConstraintObj(deviceId, null, width);
     });
     var heightConstraints = standardWidthsAndHeights.map(function(height){
-//console.log("Calling: heightConstraints");
-    	return getConstraintObj(deviceId, null, null, height);
+      return getConstraintObj(deviceId, null, null, height);
     });
 
     // create a promise which tries to resolve the best constraints for this deviceId
     // rather than reject, failures return a value of `null`
     function getFirstResolvingConstraint(constraintsBestToWorst){
-console.log("Calling: getFirstResolvingConstraint");
       return new Promise(function(resolveBestConstraints){
         // build a chain of promises which either resolves or continues searching
-console.log("Calling: resolveBestConstraints");
         return constraintsBestToWorst.reduce(function(chain, next){
-console.log("Calling: reduce");
           return chain.then(function(searchState){
-//console.log("Calling: chain.then");
             if(searchState.found){
               // The best working constraint was found. Skip further tests.
               return searchState;
@@ -100,7 +91,6 @@ console.log("Calling: reduce");
               return window.navigator.mediaDevices.getUserMedia(searchState.nextConstraint).then(function(mediaStream){
                 // We found the first working constraint object, now we can stop
                 // the stream and short-circuit the search.
-console.log("Calling: mediaStream");
                 killStream(mediaStream);
                 searchState.found = true;
                 return searchState;
@@ -115,7 +105,6 @@ console.log("Calling: mediaStream");
           found: false,
           nextConstraint: {}
         })).then(function(searchState){
-console.log("Calling: searchState");
           if(searchState.found){
             resolveBestConstraints(searchState.nextConstraint);
           } else {
@@ -124,12 +113,10 @@ console.log("Calling: searchState");
         });
       });
     }
+
     return getFirstResolvingConstraint(facingModeConstraints).then(function(facingModeSpecs){
-console.log("Calling: facingModeSpecs");
       return getFirstResolvingConstraint(widthConstraints).then(function(widthSpecs){
-console.log("Calling: widthSpecs");        
         return getFirstResolvingConstraint(heightConstraints).then(function(heightSpecs){
-console.log("Calling: heightSpecs");
           return {
             deviceId: deviceId,
             facingMode: facingModeSpecs === null ? null : facingModeSpecs.video.facingMode.exact,
@@ -142,43 +129,34 @@ console.log("Calling: heightSpecs");
   }
 
   function chooseCameras(){
-console.log("Calling: chooseCameras");
     var devices = window.navigator.mediaDevices.enumerateDevices();
     return devices.then(function(mediaDeviceInfoList){
-console.log("Calling: mediaDeviceInfoList");
       var videoDeviceIds = mediaDeviceInfoList.filter(function(elem){
-console.log("Calling: videoDeviceIds");
         return elem.kind === 'videoinput';
       }).map(function(elem){
         return elem.deviceId;
       });
       return videoDeviceIds;
     }).then(function(videoDeviceIds){
-console.log("Calling: videoDeviceIds");
       // there is no standardized way for us to get the specs of each camera
       // (due to concerns over user fingerprinting), so we're forced to
       // iteratively test each camera for it's capabilities
       var searches = [];
       videoDeviceIds.forEach(function(id){
-console.log("Calling: searches.push(getCameraSpecsById(id));");
         searches.push(getCameraSpecsById(id));
       });
       return Promise.all(searches);
     }).then(function(cameraSpecsArray){
-console.log("Calling: cameraSpecsArray");
       return cameraSpecsArray.filter(function(camera){
-console.log("Calling: camera");
         // filter out any cameras where width and height could not be captured
         if(camera !== null && camera.width !== null && camera.height !== null){
           return true;
         }
       }).sort(function(a, b){
-console.log("Calling: }).sort(function(a, b){");
         // sort cameras from highest resolution (by width) to lowest
         return b.width - a.width;
       });
     }).then(function(bestToWorstCameras){
-console.log("Calling: bestToWorstCameras");
       var backCamera = null,
           frontCamera = null;
       // choose backCamera
@@ -216,38 +194,33 @@ console.log("Calling: bestToWorstCameras");
   }
 
   function mediaStreamIsActive(){
-console.log("Calling: mediaStreamIsActive");
     return activeMediaStream !== null;
   }
 
   function killActiveMediaStream(){
-console.log("Calling: killActiveMediaStream");
     killStream(activeMediaStream);
     activeMediaStream = null;
   }
 
   function getVideoPreview(){
-console.log("Calling: getVideoPreview");
     return document.getElementById(ELEMENTS.preview);
   }
 
   function getImg(){
-console.log("Calling: getImg");
+    console.log("Getting Image: "+ ELEMENTS.still);
+    console.log("Getting Image object: " + document.getElementById(ELEMENTS.still));
     return document.getElementById(ELEMENTS.still);
   }
 
   function getCurrentCameraIndex(){
-console.log("Calling: getCurrentCameraIndex");
     return currentCamera;
   }
 
   function getCurrentCamera(){
-//console.log("Calling: getCurrentCamera");
     return currentCamera === 1 ? frontCamera : backCamera;
   }
 
   function bringStillToFront(){
-console.log("Calling: bringStillToFront");
     var img = getImg();
     if(img){
       img.style.visibility = 'visible';
@@ -256,7 +229,6 @@ console.log("Calling: bringStillToFront");
   }
 
   function bringPreviewToFront(){
-console.log("Calling: bringPreviewToFront");
     var img = getImg();
     if(img){
       img.style.visibility = 'hidden';
@@ -265,17 +237,14 @@ console.log("Calling: bringPreviewToFront");
   }
 
   function isInitialized(){
-console.log("Calling: isInitialized");
     return backCamera !== null;
   }
 
   function canChangeCamera(){
-console.log("Calling: canChangeCamera");
     return !!backCamera && !!frontCamera;
   }
 
   function calcStatus(){
-console.log("Calling: calcStatus");
     return {
       // !authorized means the user either has no camera or has denied access.
       // This would leave a value of `null` before prepare(), and `false` after.
@@ -303,7 +272,6 @@ console.log("Calling: calcStatus");
   }
 
   function startCamera(success, error){
-console.log("Calling: startCamera");
       var currentCameraIndex = getCurrentCameraIndex();
       var currentCamera = getCurrentCamera();
       window.navigator.mediaDevices.getUserMedia({
@@ -314,36 +282,81 @@ console.log("Calling: startCamera");
           height: {ideal: currentCamera.height}
         }
       }).then(function(mediaStream){
-console.log("Calling: }).then(function(mediaStream){");
         activeMediaStream = mediaStream;
         var video = getVideoPreview();
-console.log("Return: getVideoPreview mediastream");
-console.log("Return: deviceId "+currentCamera.deviceId);
-console.log("Return: width " + currentCamera.width);
-console.log("Return: height " + currentCamera.height);
-console.log("Return: mediaStream " + mediaStream);
-console.log("Return: currentCamera " + currentCamera);
+        //OLD: video.src = URL.createObjectURL(mediaStream);
         video.srcObject = mediaStream;
-console.log("Return: createObjectURL mediastream");
         success(calcStatus());
-console.log("Return: success mediastream");
       }, function(err){
         // something bad happened
-console.log("Calling: }, function(err){");
         err = null;
         var code = currentCameraIndex? 4 : 3;
         error(code); // FRONT_CAMERA_UNAVAILABLE : BACK_CAMERA_UNAVAILABLE
       });
   }
+  function getFraction(ratio)
+  {
+    var gcd = function(a, b) 
+    {
+      if (b < 0.0000001) 
+      {
+        return a;                // Since there is a limited precision we need to limit the value.
+      }
+      return gcd(b, Math.floor(a % b));           // Discard any fractions due to limitations in precision.
+    };
 
+    var fraction = ratio;
+    var len = fraction.toString().length - 2;
+
+    var denominator = Math.pow(10, len);
+    var numerator = fraction * denominator;
+
+    var divisor = gcd(numerator, denominator);    // Should be 5
+
+    numerator /= divisor;                         // Should be 687
+    denominator /= divisor;                       // Should be 2000
+    console.log(Math.floor(numerator) + '/' + Math.floor(denominator));
+    return [Math.floor(numerator),Math.floor(denominator)];
+    //alert(Math.floor(numerator) + '/' + Math.floor(denominator));
+  }
   function getTempCanvasAndContext(videoElement){
-//console.log("Calling: getTempCanvasAndContext");
     var tempCanvas = document.createElement('canvas');
     var camera = getCurrentCamera();
+    //readdress this to autoscale for phones
     tempCanvas.height = camera.height;
     tempCanvas.width = camera.width;
+    var xTrans = 0;
+    var yTrans = 0;
     var tempCanvasContext = tempCanvas.getContext('2d');
+    console.log("CamHeight was: "+ tempCanvas.height);
+    console.log("CamWidth  was: "+ tempCanvas.width);
+    //check this for if there is an actual image
+    //void ctx.scale(x, y);
+    //tempCanvasContext.scale(1,aspectRatio);
+    //Fix rotation if height > width
+    
+    if(window.innerHeight > window.innerWidth)
+    {
+      if(tempCanvas.height > tempCanvas.width)
+      {
+        xTrans = tempCanvas.width/tempCanvas.height; // == 0.5625 (for 9/16)
+        yTrans = tempCanvas.height/tempCanvas.width; // == 1.77 (for 16/9)
+      }
+      else
+      {
+        xTrans = tempCanvas.height/tempCanvas.width;
+        yTrans = tempCanvas.width/tempCanvas.height;
+      }
+      console.log("xTrans: "+ xTrans);
+      console.log("yTrans: "+ yTrans);
+      //this works for iOS ->tempCanvasContext.scale(0.5625,1.5625);
+      //this is 9/16,16/9
+      //tempCanvasContext.scale(0.5625,1.77);
+      tempCanvasContext.scale(xTrans,yTrans);
+    }
+    //DON'T CHANGE THIS
     tempCanvasContext.drawImage(videoElement, 0, 0, camera.width, camera.height);
+    //tempCanvasContext.scale(0.5625,1.5625);
     return {
       canvas: tempCanvas,
       context: tempCanvasContext
@@ -351,27 +364,48 @@ console.log("Calling: }, function(err){");
   }
 
   function getCurrentImageData(videoElement){
-//console.log("Calling: getCurrentImageData");
+    console.log("Calling getCurrentImageData");
     var snapshot = getTempCanvasAndContext(videoElement);
-    return snapshot.context.getImageData(0, 0, snapshot.canvas.width, snapshot.canvas.height);
+    
+    //DEBUGF ONLY
+    /*
+    if(confirm("Want the image?")) 
+    {
+      //var snapDataWhole = snapshot.canvas.toDataURL('image/png');
+      //console.log("\tSnapDataWhole: " + snapDataWhole);
+      console.log("snapshot.canvas.width: "+ snapshot.canvas.width);
+      console.log("snapshot.canvas.height: "+ snapshot.canvas.height);
+    } 
+    else 
+    {
+
+    }
+    */
+    console.log("\tSnapshot: "+ snapshot);
+    var snapData = snapshot.context.getImageData(0, 0, snapshot.canvas.width, snapshot.canvas.height);
+    console.log("\t\tSnapData: "+ snapData);
+    console.log("\t\t\tEncoded data length: "+ snapData.data.length);
+    return snapData;
   }
 
   // take a screenshot of the video preview with a temp canvas
   function captureCurrentFrame(videoElement){
-console.log("Calling: captureCurrentFrame");
+    console.log("Calling captureCurrentFrame");
     return getTempCanvasAndContext(videoElement).canvas.toDataURL('image/png');
   }
 
   function initialize(success, error){
-console.log("Calling: initialize");
     if(scanWorker === null){
       var workerBlob = new Blob([workerScript],{type: "text/javascript"});
+      console.log("Internal Init: "+ workerBlob);
       scanWorker = new Worker(URL.createObjectURL(workerBlob));
     }
     if(!getVideoPreview()){
       // prepare DOM (sync)
       var videoPreview = document.createElement('video');
       videoPreview.setAttribute('autoplay', 'autoplay');
+      //Required attribute for camera to start on iOS
+      videoPreview.setAttribute('playsinline', null);
       videoPreview.setAttribute('id', ELEMENTS.preview);
       videoPreview.setAttribute('style', 'display:block;position:fixed;top:50%;left:50%;' +
       'width:auto;height:auto;min-width:100%;min-height:100%;z-index:' + ZINDEXES.preview +
@@ -379,7 +413,7 @@ console.log("Calling: initialize");
       'translateX(-50%) translateY(-50%);transform:translateX(-50%) translateY(-50%);' +
       'background-size:cover;background-position:50% 50%;background-color:#FFF;');
       videoPreview.addEventListener('loadeddata', function(){
-console.log("Calling: videoPreview.addEventListener('loadeddata', function(){");
+        console.log("Calling loadeddata event addEventListener");
         bringPreviewToFront();
       });
 
@@ -390,14 +424,13 @@ console.log("Calling: videoPreview.addEventListener('loadeddata', function(){");
       ';-moz-transform: translateX(-50%) translateY(-50%);-webkit-transform: ' +
       'translateX(-50%) translateY(-50%);transform:translateX(-50%) translateY(-50%);' +
       'background-size:cover;background-position:50% 50%;background-color:#FFF;');
-//console.log("not getVideoPreview: " + videoPreview.outerHTML);
+
       document.body.appendChild(videoPreview);
       document.body.appendChild(stillImg);
     }
     if(backCamera === null){
       // set instance cameras
       chooseCameras().then(function(cameras){
-console.log("Calling: chooseCameras().then(function(cameras){");
         backCamera = cameras.backCamera;
         frontCamera = cameras.frontCamera;
         if(backCamera !== false){
@@ -422,9 +455,7 @@ console.log("Calling: chooseCameras().then(function(cameras){");
    */
 
   function prepare(success, error){
-console.log("Calling: prepare");
     initialize(function(){
-console.log("Calling: initialize(function(){");
       // return status on success
       success(calcStatus());
     },
@@ -433,9 +464,7 @@ console.log("Calling: initialize(function(){");
   }
 
   function show(success, error){
-console.log("Calling: show");
     function showCamera(){
-console.log("Calling: showCamera");
       if(!mediaStreamIsActive()){
         startCamera(success, error);
       } else {
@@ -455,7 +484,6 @@ console.log("Calling: showCamera");
   }
 
   function hide(success, error){
-console.log("Calling: hide");
     error = null; // should never error
     if(mediaStreamIsActive()){
       killActiveMediaStream();
@@ -469,16 +497,13 @@ console.log("Calling: hide");
 
   function scan(success, error) {
     // initialize and start video preview if not already active
-console.log("Calling: scan");
     show(function(ignore){
       // ignore success output – `scan` method callback should be passed the decoded data
-console.log("Calling: show(function(ignore){");
       ignore = null;
       var video = getVideoPreview();
       var returned = false;
       scanning = true;
       scanWorker.onmessage = function(event){
-//console.log("Calling: scanWorker.onmessage = function(event){");
         var obj = event.data;
         if(obj.result && !returned){
           returned = true;
@@ -498,7 +523,6 @@ console.log("Calling: show(function(ignore){");
         // balance scan speed vs. CPU/power usage
         nextScan = window.setTimeout(thisScanCycle, SCAN_INTERVAL);
         cancelNextScan = function(sendError){
-//console.log("Calling: cancelNextScan");
           window.clearTimeout(nextScan);
           nextScan = null;
           cancelNextScan = null;
@@ -512,7 +536,6 @@ console.log("Calling: show(function(ignore){");
   }
 
   function cancelScan(success, error){
-console.log("Calling: cancelScan");
     error = null; // should never error
     if(cancelNextScan !== null){
       cancelNextScan(true);
@@ -524,7 +547,7 @@ console.log("Calling: cancelScan");
   }
 
   function pausePreview(success, error){
-console.log("Calling: pausePreview");
+    console.log("Calling pausePreview: ");
     error = null; // should never error
     if(mediaStreamIsActive()){
       // pause scanning too
@@ -547,7 +570,6 @@ console.log("Calling: pausePreview");
   }
 
   function resumePreview(success, error){
-console.log("Calling: resumePreview");
     // if a scan was happening, resume it
     if(thisScanCycle !== null){
       thisScanCycle();
@@ -556,17 +578,14 @@ console.log("Calling: resumePreview");
   }
 
   function enableLight(success, error){
-console.log("Calling: enableLight");
     error(7); //LIGHT_UNAVAILABLE
   }
 
   function disableLight(success, error){
-console.log("Calling: disableLight");
     error(7); //LIGHT_UNAVAILABLE
   }
 
   function useCamera(success, error, array){
-console.log("Calling: useCamera");
     var requestedCamera = array[0];
     var initialized = isInitialized();
     if(requestedCamera !== currentCamera){
@@ -576,7 +595,6 @@ console.log("Calling: useCamera");
         currentCamera = requestedCamera;
         if(initialized){
           hide(function(status){
-console.log("Calling: hide(function(status){");
             // Don't need this one
             status = null;
           });
@@ -591,12 +609,10 @@ console.log("Calling: hide(function(status){");
   }
 
   function openSettings(success, error){
-console.log("Calling: openSettings");
     error(8); //OPEN_SETTINGS_UNAVAILABLE
   }
 
   function getStatus(success, error){
-console.log("Calling: getStatus");
     error = null; // should never error
     success(calcStatus());
   }
@@ -605,7 +621,6 @@ console.log("Calling: getStatus");
   // This method might be useful in cases where a new camera is available, and
   // the application needs to force the plugin to chooseCameras() again.
   function destroy(success, error){
-console.log("Calling: destroy");
     error = null; // should never error
     cancelScan();
     if(mediaStreamIsActive()){
